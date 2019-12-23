@@ -31,6 +31,9 @@ Python client.py
 ```
 In the GUI window set username. This username will be the client's directory name.
 
+## Output
+
+![alt text](Sample_OUTPUT.jpg)
 
 ## Authors
 
