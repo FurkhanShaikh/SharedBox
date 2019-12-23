@@ -4,6 +4,11 @@ A prototype project for sharing files between clients. The clients connect to se
 
 NB: This project was developed and tested on windows OS only.
 
+# Branch Update
+When a file is deleted from clien't directory, it is detected by that clien'ts program. The client send invalidation notice to server and from server to other clients. The program then uses 2 Phase Commit for determination of whether the file should be deleted from all the clients or not. As of now the responses for the 2PC requests is generated randomly.
+
+The program uses WatchDog[https://github.com/gorakhargosh/watchdog] package for detection of deleted file.
+
 ## Getting Started
 
 The GUI is created using tkinter library and other libraries include os, thread and time.
