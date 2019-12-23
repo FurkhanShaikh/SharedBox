@@ -33,7 +33,7 @@ In the GUI window set username. This username will be the client's directory nam
 
 ## Output
 
-![alt text](deleted_output.jpg)
+![alt text](blob/CheckdeletedFile/deleted_output.png)
 
 ## Authors
 
