@@ -23,7 +23,9 @@ SOCK_STREAM is the stream socket ie with continuous flow (TCP)."""
 SERVER.bind(ADDR)  # Server socket is binded/linked to localhost and portnumber
 
 FILES_ON_SERVER = []  # list of files currently on server
-files_to_send={}  # dictionary files to send to each clients
+files_to_send = {}  # dictionary files to send to each clients
+invalidated_file = ["placeholder"]
+invalidator = ["placeholder"]
 
 # method to accept incoming connections. Always on
 def accept_incoming_connections():
@@ -69,64 +71,60 @@ def handle_client(client):  # Takes client socket as argument.
     broadcast(bytes(msg,"utf8"))
     msg_list.insert(tkinter.END, msg)  # add message on GUI
     while True:
-        try:
+        msg = client.recv(BUFSIZ).decode("utf8")
+        print(clients[client],"in handle loop:", msg)
+        if msg == "{file}":  # if client wants to send file
+            recieve_file(client)
+        elif msg == "{chk_files}":  # if client wants to check files on server
+            check_files(client)
+        elif msg == "{DOWN}":  # to send files to client
+            send_file(client)
+        elif msg == "{update}":  # receiving file update from client
+            update_file(client)
+        elif msg == "{invalidate}":
+            client.send(bytes(invalidated_file[0], "utf8"))  # send updated file name to client for deletion
             msg = client.recv(BUFSIZ).decode("utf8")
-            print(name,"in handle loop: ", msg)
-            if msg== "{delete}":
-                client.send(bytes("DELETE OK","utf8"))
-                deletedfile = client.recv(BUFSIZ).decode("utf8")
-                msg = " has deleted: " + deletedfile + ". Requesting votes!"
-                broadcast(bytes(msg,"utf8"),name)
-            elif msg=="{DELETE FILE}":
-                FILES_ON_SERVER.remove(deletedfile)
-                msg = " deletefile "+deletedfile
-                broadcast(bytes(msg,"utf8"),name)
-            elif msg =="{aborted}":
-                msg = "FILE DELETION ABORTED"
-                broadcast(bytes(msg,"utf8"))
+            if msg == "whoupdated":
+                client.send(bytes(invalidator[0], "utf8"))  # send updated file name to client for deletion
+            print( clients[client],"send",invalidated_file[0],invalidator[0])
+        elif msg == "{quit}":  # if client wants to exit
+            client.close()
+            msg_list.insert(tkinter.END, "%s has left the server." % name)
+            del clients[client]
+            if (len(clients.keys()) != 0):
+                broadcast(bytes("%s has left the server." % name, "utf8"))
+                msg = "connected clients:"
+                for cc in clients.keys():
+                    msg = msg + ' ' + clients[cc]
+                broadcast(bytes(msg, "utf8"))
+                msg_list.insert(tkinter.END, msg)  # add message on GUI
+            else:
+                msg_list.insert(tkinter.END, "Connected Clients: 0")  # add message on GUI
+            break
 
-            elif msg == "{file}":  # if client wants to send file
-                recieve_file(client)
-
-            elif msg == "{chk_files}":  # if client wants to check files on server
-                check_files(client)
-
-            elif msg == "{DOWN}":  # to send files to client
-                send_file(client)
-
-            elif msg == "{quit}":  # if client wants to exit
-                client.close()
-                msg_list.insert(tkinter.END, "%s has left the server." % name)
-                del clients[client]
-                if (len(clients.keys()) != 0):
-                    broadcast(bytes("%s has left the server." % name, "utf8"))
-                    msg = "connected clients:"
-                    for cc in clients.keys():
-                        msg = msg + ' ' + clients[cc]
-                    broadcast(bytes(msg, "utf8"))
-                    msg_list.insert(tkinter.END, msg)  # add message on GUI
-                break
-        except:
-            pass
 
 # this method sends list of files on server to check which of them client has
 def check_files(client):  # argument is client socket
     if len(FILES_ON_SERVER) > 0:  # check if server got any files # no client has send files
         client.send(bytes("SOL", "utf8"))  # start of List
         msg = client.recv(BUFSIZ).decode("utf8")
+        print(clients[client],":",msg)
         if msg == "LIST_OK":  # see if client ready to recieve list of files
             for i in range(len(FILES_ON_SERVER)):
                 client.send(bytes(FILES_ON_SERVER[i], "utf8"))  # send file names one by one
                 msg = client.recv(BUFSIZ).decode("utf8")  # blocking recv function
+                print(clients[client], ":", msg)
             client.send(bytes("{EOL}", "utf8"))   # End of list
         msg = client.recv(BUFSIZ).decode("utf8")
+        print(clients[client], ":", msg)
         if msg == "ALL_OK":  # client has all files
             return
         elif msg == "NUM":  # client sends index of files
-            files_to_send[client] = []
+            files_to_send[client] = []  # update every time
             client.send(bytes("OK", "utf8"))
             while True:
                 msg = client.recv(BUFSIZ).decode("utf8")
+                print(clients[client], ":", msg)
                 if msg != "EOL":  # end of list
                     files_to_send[client].append(FILES_ON_SERVER[int(msg)])  # dictionary to save file names
                     client.send(bytes("OK", "utf8"))
@@ -139,9 +137,11 @@ def send_file(client): # argument is client socket
         if len(files_to_send[client]) != 0:
             client.send(bytes("FILE", "utf8"))
             msg = client.recv(BUFSIZ).decode("utf8")  # OK
+            print(clients[client], ":", msg)
             filename = files_to_send[client][0]
             client.send(bytes(filename, "utf8"))
             msg = client.recv(BUFSIZ).decode("utf8")
+            print(clients[client], ":", msg)
             f = open("server_directory/" + filename, 'rb+')
             while True:
                 l = f.read(BUFSIZ)
@@ -149,7 +149,7 @@ def send_file(client): # argument is client socket
                 if l:
                     client.send(l)
                     msg = client.recv(BUFSIZ).decode("utf8")
-                    # print(msg)
+                    print(msg)
                 else:
                     client.send(bytes("{EOF}", "utf8"))
                     f.close()
@@ -171,16 +171,43 @@ def recieve_file(client):  # argument is client socket
     f = open("server_directory/" + filename, 'wb+')
     while True:
         msg = client.recv(BUFSIZ)
+        print(clients[client], ":", msg)
         if msg != bytes("{EOF}", "utf8"):
             f.write(msg)
             client.send(bytes("OK", "utf8"))
         else:
             f.close()
             print("Done Receiving")
-            FILES_ON_SERVER.append(filename)  # update file list of server
+            if filename not in FILES_ON_SERVER:
+                FILES_ON_SERVER.append(filename)  # update file list of server
             print(FILES_ON_SERVER)  # update file list of server
             msg_list.insert(tkinter.END, clients[client] + ": uploaded "+filename)  # display on GUI
             broadcast(bytes("uploaded file " + filename, "utf8"), clients[client] + ": ")  # notify everyone
+            break
+
+# to receive updated file and send invalidation notices
+def update_file(client):
+    client.send(bytes("FILE OK", "utf8"))
+    filename = client.recv(BUFSIZ).decode("utf8")
+    print("receiving update on file:", filename)
+    client.send(bytes("FILENAME OK", "utf8"))
+    f = open("server_directory/" + filename, 'wb+')
+    while True:
+        msg = client.recv(BUFSIZ)
+        print(clients[client], ":", msg)
+        if msg != bytes("{EOF}", "utf8"):
+            f.write(msg)
+            client.send(bytes("OK", "utf8"))
+        else:
+            f.close()
+            print("Done Receiving")
+            msg_list.insert(tkinter.END, clients[client] + ": updated " + filename)  # display on GUI
+            msg_list.insert(tkinter.END, "-------Sending INVALIDATION Notice-------")  # display on GUI
+            invalidated_file[0] = filename
+            invalidator[0] = clients[client]
+            # broadcast(bytes("updated file " + filename, "utf8"), clients[client] + ": ")  # notify everyone
+            # time.sleep(10)  # wrong method
+            broadcast(bytes("INVALIDATE", "utf8"))
             break
 
 # method to send messages to all clients
@@ -193,9 +220,6 @@ def broadcast(msg, prefix=""):  # prefix is for name identification.
 def on_closing(event=None):
     """This function is to be called when the window is closed."""
     try:
-        msg = "{quit}"
-        client_socket.send(bytes(msg, "utf8"))
-        client_socket.close()
         top.quit()
         os._exit(1)
     except:
@@ -211,7 +235,7 @@ if __name__ == "__main__":
     my_msg.set("")
     scrollbar = tkinter.Scrollbar(messages_frame)  # To navigate through past messages.
 
-    msg_list = tkinter.Listbox(messages_frame, height=15, width=45, yscrollcommand=scrollbar.set)
+    msg_list = tkinter.Listbox(messages_frame, height=15, width=55, yscrollcommand=scrollbar.set)
     scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
     msg_list.pack(side=tkinter.LEFT, fill=tkinter.X)
     msg_list.pack()
@@ -221,7 +245,7 @@ if __name__ == "__main__":
     exit_button.pack()
 
     top.protocol("WM_DELETE_WINDOW", on_closing)
-
+    # https://stackoverflow.com/questions/273192/how-can-i-safely-create-a-nested-directory
     # check and create server directory to store files
     try:
         os.makedirs("server_directory")  # make client directory by username
