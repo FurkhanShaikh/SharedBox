@@ -5,9 +5,9 @@ A prototype project for sharing files between clients. The clients connect to se
 NB: This project was developed and tested on windows OS only.
 
 # Branch Update
-When a file is deleted from client directory, it is detected by that client's program. The client send invalidation notice to server and from server to other clients. The program then uses 2 Phase Commit for determination of whether the file should be deleted from all the clients or not. As of now the responses for the 2PC requests is generated randomly.
+When a file is updated in a client directory, it is detected by that client's program. The client sends updated filename to server and from server to other clients. The program then uploads(pushes) the updated file to remaining clients.
 
-The program uses [WatchDog](https://github.com/gorakhargosh/watchdog) package for detection of deleted file.
+The program uses [WatchDog](https://github.com/gorakhargosh/watchdog) package for detection of updated file.
 
 ## Getting Started
 
