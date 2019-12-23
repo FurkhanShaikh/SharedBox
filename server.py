@@ -71,8 +71,21 @@ def handle_client(client):  # Takes client socket as argument.
     while True:
         try:
             msg = client.recv(BUFSIZ).decode("utf8")
-            print("in handle loop: ", msg)
-            if msg == "{file}":  # if client wants to send file
+            print(name,"in handle loop: ", msg)
+            if msg== "{delete}":
+                client.send(bytes("DELETE OK","utf8"))
+                deletedfile = client.recv(BUFSIZ).decode("utf8")
+                msg = " has deleted: " + deletedfile + ". Requesting votes!"
+                broadcast(bytes(msg,"utf8"),name)
+            elif msg=="{DELETE FILE}":
+                FILES_ON_SERVER.remove(deletedfile)
+                msg = " deletefile "+deletedfile
+                broadcast(bytes(msg,"utf8"),name)
+            elif msg =="{aborted}":
+                msg = "FILE DELETION ABORTED"
+                broadcast(bytes(msg,"utf8"))
+
+            elif msg == "{file}":  # if client wants to send file
                 recieve_file(client)
 
             elif msg == "{chk_files}":  # if client wants to check files on server
