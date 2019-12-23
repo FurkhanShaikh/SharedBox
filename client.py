@@ -1,6 +1,3 @@
-# NAME : MOHAMMED FURKHAN SHAIKH
-# STUDENT ID: 1001722637
-
 # Took base code from below link and started working on it
 ###https://medium.com/swlh/lets-write-a-chat-app-in-python-f6783a9ac170
 
