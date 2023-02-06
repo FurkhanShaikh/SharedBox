@@ -41,6 +41,5 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 ## Acknowledgments
 
-* Thanks to anyone whose code was used
-* My professor Chance Eary at UTA
+* Chance Eary, Professor, UTA
 
